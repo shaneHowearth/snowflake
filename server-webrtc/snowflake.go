@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"git.torproject.org/pluggable-transports/goptlib.git"
+	pt "git.torproject.org/pluggable-transports/goptlib.git"
 	"github.com/keroserene/go-webrtc"
 )
 
@@ -160,7 +160,9 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 
 	err = pc.SetRemoteDescription(sdp)
 	if err != nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, fmt.Errorf("accept: SetRemoteDescription: %s", err)
 	}
 	log.Println("sdp offer successfully received.")
@@ -168,18 +170,24 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 	log.Println("Generating answer...")
 	answer, err := pc.CreateAnswer()
 	if err != nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, err
 	}
 
 	if answer == nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, fmt.Errorf("failed gathering ICE candidates")
 	}
 
 	err = pc.SetLocalDescription(answer)
 	if err != nil {
-		pc.Destroy()
+		if err = pc.Destroy(); err != nil {
+			log.Printf("pc.Destroy returned an error: %v", err)
+		}
 		return nil, err
 	}
 
@@ -228,12 +236,14 @@ func main() {
 			bindaddr.Addr.Port = 12345 // lies!!!
 			pt.Smethod(bindaddr.MethodName, bindaddr.Addr)
 		default:
-			pt.SmethodError(bindaddr.MethodName, "no such method")
+			if err := pt.SmethodError(bindaddr.MethodName, "no such method"); err != nil {
+				log.Printf("SmethodError returned error: %v", err)
+			}
 		}
 	}
 	pt.SmethodsDone()
 
-	var numHandlers int = 0
+	var numHandlers int
 	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -242,7 +252,9 @@ func main() {
 		// This environment variable means we should treat EOF on stdin
 		// just like SIGTERM: https://bugs.torproject.org/15435.
 		go func() {
-			io.Copy(ioutil.Discard, os.Stdin)
+			if _, err := io.Copy(ioutil.Discard, os.Stdin); err != nil {
+				log.Printf("io.Copy encountered an error: %v", err)
+			}
 			log.Printf("synthesizing SIGTERM because of stdin close")
 			sigChan <- syscall.SIGTERM
 		}()
