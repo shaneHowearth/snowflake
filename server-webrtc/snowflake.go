@@ -29,11 +29,15 @@ func copyLoop(a, b net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		io.Copy(b, a)
+		if _, err := io.Copy(b, a); err != nil {
+			log.Printf("copy b to a error in copyLoop: %v", err)
+		}
 		wg.Done()
 	}()
 	go func() {
-		io.Copy(a, b)
+		if _, err := io.Copy(a, b); err != nil {
+			log.Printf("copy a to b error in copyLoop: %v", err)
+		}
 		wg.Done()
 	}()
 	wg.Wait()
@@ -79,15 +83,15 @@ func (c *webRTCConn) RemoteAddr() net.Addr {
 }
 
 func (c *webRTCConn) SetDeadline(t time.Time) error {
-	return fmt.Errorf("SetDeadline not implemented")
+	return fmt.Errorf("setDeadline not implemented")
 }
 
 func (c *webRTCConn) SetReadDeadline(t time.Time) error {
-	return fmt.Errorf("SetReadDeadline not implemented")
+	return fmt.Errorf("setReadDeadline not implemented")
 }
 
 func (c *webRTCConn) SetWriteDeadline(t time.Time) error {
-	return fmt.Errorf("SetWriteDeadline not implemented")
+	return fmt.Errorf("setWriteDeadline not implemented")
 }
 
 func datachannelHandler(conn *webRTCConn) {
@@ -139,9 +143,12 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 		}
 		dc.OnMessage = func(msg []byte) {
 			log.Printf("OnMessage <--- %d bytes", len(msg))
-			n, err := pw.Write(msg)
+			var n int
+			n, err = pw.Write(msg)
 			if err != nil {
-				pw.CloseWithError(err)
+				if inerr := pw.CloseWithError(err); inerr != nil {
+					log.Printf("close with error returned error: %v", inerr)
+				}
 			}
 			if n != len(msg) {
 				panic("short write")
@@ -167,7 +174,7 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 
 	if answer == nil {
 		pc.Destroy()
-		return nil, fmt.Errorf("Failed gathering ICE candidates.")
+		return nil, fmt.Errorf("failed gathering ICE candidates")
 	}
 
 	err = pc.SetLocalDescription(answer)
@@ -180,7 +187,6 @@ func makePeerConnectionFromOffer(sdp *webrtc.SessionDescription, config *webrtc.
 }
 
 func main() {
-	var err error
 	var httpAddr string
 	var logFilename string
 
@@ -200,7 +206,7 @@ func main() {
 
 	log.Println("starting")
 	webrtc.SetLoggingVerbosity(1)
-
+	var err error
 	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
 		log.Fatal(err)
