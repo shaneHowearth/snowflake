@@ -44,7 +44,7 @@ func (p *Peers) Collect() (Snowflake, error) {
 	cnt := p.Count()
 	s := fmt.Sprintf("Currently at [%d/%d]", cnt, p.capacity)
 	if cnt >= p.capacity {
-		s := fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
+		s = fmt.Sprintf("At capacity [%d/%d]", cnt, p.capacity)
 		return nil, errors.New(s)
 	}
 	log.Println("WebRTC: Collecting a new Snowflake.", s)
