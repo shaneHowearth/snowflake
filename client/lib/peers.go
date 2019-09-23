@@ -50,7 +50,7 @@ func (p *Peers) Collect() (Snowflake, error) {
 	log.Println("WebRTC: Collecting a new Snowflake.", s)
 	// Engage the Snowflake Catching interface, which must be available.
 	if nil == p.Tongue {
-		return nil, errors.New("Missing Tongue to catch Snowflakes with.")
+		return nil, errors.New("missing Tongue to catch Snowflakes with")
 	}
 	// BUG: some broker conflict here.
 	connection, err := p.Tongue.Catch()
